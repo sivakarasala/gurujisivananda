@@ -19,6 +19,8 @@ fn format_bytes(bytes: f64) -> String {
     }
 }
 
+const PAGE_SIZE: usize = 20;
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TrackResult {
     pub id: String,
@@ -36,10 +38,9 @@ fn format_duration(seconds: i32) -> String {
 }
 
 #[server]
-pub async fn search_tracks(query: String) -> Result<Vec<TrackResult>, ServerFnError> {
+pub async fn search_tracks(query: String, offset: i64) -> Result<Vec<TrackResult>, ServerFnError> {
     let pool = crate::db::db().await?;
-    let limit = 20i64;
-    let offset = 0i64;
+    let limit = PAGE_SIZE as i64;
 
     let rows = if query.trim().is_empty() {
         crate::db::list_tracks(&pool, limit, offset).await
@@ -68,6 +69,10 @@ pub fn GurujiPage() -> impl IntoView {
     let search_results = RwSignal::new(Vec::<TrackResult>::new());
     let audio_src = RwSignal::new(Option::<String>::None);
     let now_playing = RwSignal::new(Option::<TrackResult>::None);
+    let offset = RwSignal::new(0i64);
+    let has_more = RwSignal::new(true);
+    let loading_more = RwSignal::new(false);
+    let search_version = RwSignal::new(0u32);
 
     let search_action = ServerAction::<SearchTracks>::new();
     let search_pending = search_action.pending();
@@ -77,22 +82,74 @@ pub fn GurujiPage() -> impl IntoView {
     Effect::new(move || {
         search_action.dispatch(SearchTracks {
             query: String::new(),
+            offset: 0,
         });
     });
 
+    // Handle search action results (replaces results for new searches)
     Effect::new(move || {
         if let Some(response) = search_result_value.get() {
             match response {
                 Ok(results) => {
+                    has_more.set(results.len() >= PAGE_SIZE);
+                    offset.set(results.len() as i64);
                     search_results.set(results);
                 }
                 Err(e) => {
                     toast.error(format!("Search failed: {}", e));
                     search_results.set(vec![]);
+                    has_more.set(false);
                 }
             }
         }
     });
+
+    // Infinite scroll: load more when user scrolls near bottom
+    #[cfg(feature = "hydrate")]
+    {
+        use wasm_bindgen::prelude::*;
+        use wasm_bindgen::JsCast;
+
+        let closure = Closure::wrap(Box::new(move || {
+            if loading_more.get_untracked()
+                || !has_more.get_untracked()
+                || search_pending.get_untracked()
+            {
+                return;
+            }
+
+            let window = leptos::web_sys::window().unwrap();
+            let doc = window.document().unwrap().document_element().unwrap();
+            let scroll_top = doc.scroll_top() as f64;
+            let scroll_height = doc.scroll_height() as f64;
+            let client_height = doc.client_height() as f64;
+
+            if scroll_height - scroll_top - client_height < 400.0 {
+                loading_more.set(true);
+                let q = query.get_untracked();
+                let off = offset.get_untracked();
+                let version = search_version.get_untracked();
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    if let Ok(results) = search_tracks(q, off).await {
+                        // Discard if a new search started while loading
+                        if search_version.get_untracked() != version {
+                            loading_more.set(false);
+                            return;
+                        }
+                        has_more.set(results.len() >= PAGE_SIZE);
+                        offset.update(|o| *o += results.len() as i64);
+                        search_results.update(|v| v.extend(results));
+                    }
+                    loading_more.set(false);
+                });
+            }
+        }) as Box<dyn FnMut()>);
+
+        let window = leptos::web_sys::window().unwrap();
+        let _ = window.add_event_listener_with_callback("scroll", closure.as_ref().unchecked_ref());
+        closure.forget();
+    }
 
     let on_play = move |result: TrackResult| {
         let url = format!("/api/v1/tracks/{}/stream", result.id);
@@ -106,7 +163,6 @@ pub fn GurujiPage() -> impl IntoView {
     // Fetch initial storage estimate on mount (hydrate only)
     #[cfg(feature = "hydrate")]
     {
-        let storage_used = storage_used;
         wasm_bindgen_futures::spawn_local(async move {
             let estimate = crate::pwa::get_storage_estimate().await;
             storage_used.set(estimate);
@@ -116,7 +172,12 @@ pub fn GurujiPage() -> impl IntoView {
     let on_search = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         let q = query.get_untracked();
-        search_action.dispatch(SearchTracks { query: q });
+        has_more.set(true);
+        search_version.update(|v| *v += 1);
+        search_action.dispatch(SearchTracks {
+            query: q,
+            offset: 0,
+        });
     };
 
     view! {
@@ -267,6 +328,27 @@ pub fn GurujiPage() -> impl IntoView {
                         }
                     }
                 />
+
+                {move || {
+                    loading_more.get().then(|| {
+                        view! {
+                            <div class="loading-more">
+                                <span class="loading-spinner"></span>
+                                " Loading more tracks..."
+                            </div>
+                        }
+                    })
+                }}
+
+                {move || {
+                    (!has_more.get() && search_results.with(|r| !r.is_empty())).then(|| {
+                        view! {
+                            <div class="end-of-results">
+                                "All tracks loaded"
+                            </div>
+                        }
+                    })
+                }}
             </div>
 
             {move || {

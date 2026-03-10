@@ -77,6 +77,36 @@
         padding-bottom: 6rem;
     }
 
+    .loading-more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.5rem;
+        color: rgba(58, 31, 13, 0.5);
+        font-size: 0.85rem;
+    }
+
+    .loading-spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(232, 120, 23, 0.2);
+        border-top-color: #e87817;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .end-of-results {
+        text-align: center;
+        padding: 1.5rem;
+        color: rgba(58, 31, 13, 0.35);
+        font-size: 0.8rem;
+    }
+
     .result-card {
         display: flex;
         align-items: center;

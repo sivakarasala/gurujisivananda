@@ -1,8 +1,14 @@
 pub mod app;
+#[cfg(feature = "ssr")]
+pub mod auth;
 pub mod components;
 #[cfg(feature = "ssr")]
 pub mod configuration;
 pub mod db;
+#[cfg(feature = "ssr")]
+pub mod import;
+#[cfg(feature = "ssr")]
+pub mod jobs;
 pub mod pages;
 #[cfg(feature = "hydrate")]
 pub mod pwa;

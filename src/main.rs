@@ -17,6 +17,9 @@ async fn main() {
     use utoipa::OpenApi;
     use utoipa_swagger_ui::SwaggerUi;
 
+    // Load .env file if present
+    let _ = dotenvy::dotenv();
+
     let subscriber = get_subscriber("gurujisivananda".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
@@ -28,6 +31,19 @@ async fn main() {
         .run(&pool)
         .await
         .expect("Could not run database migrations");
+
+    // Mark orphan "downloading" jobs as failed (server restarted mid-download)
+    let _ = sqlx::query(
+        "UPDATE download_jobs SET status = 'failed', error_message = 'Server restarted during download', pid = NULL WHERE status = 'downloading'"
+    )
+    .execute(&pool)
+    .await;
+
+    // Seed admin user from env vars if set
+    gurujisivananda::auth::seed_admin_if_needed(&pool).await;
+
+    // Start auto-sync scheduler for channels
+    gurujisivananda::jobs::start_auto_sync_scheduler(pool.clone());
 
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -77,19 +93,31 @@ async fn main() {
         )
         .fallback(leptos_axum::file_and_error_handler(shell))
         .layer(
-            TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
-                let request_id = request
-                    .headers()
-                    .get("x-request-id")
-                    .and_then(|v| v.to_str().ok())
-                    .unwrap_or("unknown");
-                tracing::info_span!(
-                    "http_request",
-                    method = %request.method(),
-                    uri = %request.uri(),
-                    request_id = %request_id,
-                )
-            }),
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &axum::http::Request<_>| {
+                    let request_id = request
+                        .headers()
+                        .get("x-request-id")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("unknown");
+                    tracing::info_span!(
+                        "http_request",
+                        method = %request.method(),
+                        uri = %request.uri(),
+                        request_id = %request_id,
+                        status = tracing::field::Empty,
+                        latency_ms = tracing::field::Empty,
+                    )
+                })
+                .on_response(
+                    |response: &axum::http::Response<_>,
+                     latency: std::time::Duration,
+                     span: &tracing::Span| {
+                        span.record("status", response.status().as_u16());
+                        span.record("latency_ms", latency.as_millis() as u64);
+                        tracing::info!("response");
+                    },
+                ),
         )
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(PropagateRequestIdLayer::x_request_id())

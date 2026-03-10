@@ -1,5 +1,6 @@
 use crate::components::ToastProvider;
-use crate::pages::GurujiPage;
+use crate::pages::login::get_current_user;
+use crate::pages::{AdminPage, GurujiPage, LoginPage};
 use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
@@ -46,6 +47,8 @@ pub fn App() -> impl IntoView {
                 <main>
                     <Routes fallback=|| "Page not found.".into_view()>
                         <Route path=StaticSegment("") view=GurujiPage/>
+                        <Route path=StaticSegment("login") view=LoginPage/>
+                        <Route path=StaticSegment("admin") view=AdminPage/>
                     </Routes>
                 </main>
             </Router>
@@ -57,6 +60,21 @@ pub fn App() -> impl IntoView {
 fn Header() -> impl IntoView {
     let is_muted = RwSignal::new(true);
     let audio_ref = NodeRef::<leptos::html::Audio>::new();
+
+    let current_user = Resource::new(|| (), |_| get_current_user());
+
+    let logout_action = ServerAction::<crate::pages::login::Logout>::new();
+    let logout_value = logout_action.value();
+
+    Effect::new(move || {
+        if let Some(Ok(())) = logout_value.get() {
+            #[cfg(feature = "hydrate")]
+            {
+                let window = leptos::web_sys::window().unwrap();
+                let _ = window.location().set_href("/");
+            }
+        }
+    });
 
     let toggle_audio = move |_| {
         is_muted.update(|m| *m = !*m);
@@ -80,9 +98,37 @@ fn Header() -> impl IntoView {
                     />
                     "Om Sri Sathguru Sivananda Murthaye Namaha"
                 </A>
-                <button class="audio-toggle" on:click=toggle_audio>
-                    {move || if is_muted.get() { "\u{1F507}" } else { "\u{1F50A}" }}
-                </button>
+                <div class="nav-right">
+                    <Suspense fallback=|| ()>
+                        {move || {
+                            current_user.get().map(|result| {
+                                match result {
+                                    Ok(Some(user)) if user.role == "admin" => {
+                                        view! {
+                                            <div class="nav-auth">
+                                                <A href="/admin" attr:class="nav-link">"Admin"</A>
+                                                <button
+                                                    class="nav-link logout-btn"
+                                                    on:click=move |_| {
+                                                        logout_action.dispatch(crate::pages::login::Logout {});
+                                                    }
+                                                >
+                                                    "Logout"
+                                                </button>
+                                            </div>
+                                        }.into_any()
+                                    }
+                                    _ => {
+                                        view! { <span></span> }.into_any()
+                                    }
+                                }
+                            })
+                        }}
+                    </Suspense>
+                    <button class="audio-toggle" on:click=toggle_audio>
+                        {move || if is_muted.get() { "\u{1F507}" } else { "\u{1F50A}" }}
+                    </button>
+                </div>
             </nav>
             <audio
                 node_ref=audio_ref

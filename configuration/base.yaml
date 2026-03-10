@@ -11,3 +11,9 @@ database:
   channel_binding: false
 audio:
   storage_path: "./data/audio"
+yt_dlp:
+  binary_path: "yt-dlp"
+  temp_dir: "/tmp/yt-dlp-downloads"
+  audio_format: "mp3"
+  sync_interval_hours: 24
+  max_downloads_per_batch: 50

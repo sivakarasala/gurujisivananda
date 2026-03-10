@@ -10,6 +10,16 @@ pub struct Settings {
     pub application: ApplicationSettings,
     pub database: DatabaseSettings,
     pub audio: AudioSettings,
+    pub yt_dlp: YtDlpSettings,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct YtDlpSettings {
+    pub binary_path: String,
+    pub temp_dir: String,
+    pub audio_format: String,
+    pub sync_interval_hours: u64,
+    pub max_downloads_per_batch: u32,
 }
 
 #[derive(Deserialize, Clone, Debug)]

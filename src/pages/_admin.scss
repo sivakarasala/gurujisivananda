@@ -1,0 +1,507 @@
+.admin-page {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+
+    > h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #3a1f0d;
+        margin: 0 0 1.5rem;
+    }
+
+    .admin-section {
+        margin-bottom: 2.5rem;
+
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #3a1f0d;
+            margin: 0 0 0.25rem;
+        }
+
+        .section-desc {
+            color: rgba(58, 31, 13, 0.55);
+            font-size: 0.85rem;
+            margin: 0 0 1rem;
+        }
+    }
+}
+
+// --- Download form ---
+.download-form,
+.add-channel-form {
+    display: flex;
+    gap: 0.75rem;
+
+    input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 1px solid rgba(232, 120, 23, 0.2);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        background: white;
+        color: #3a1f0d;
+        outline: none;
+        transition: border-color 0.2s ease;
+
+        &::placeholder {
+            color: rgba(58, 31, 13, 0.35);
+        }
+
+        &:focus {
+            border-color: #e87817;
+        }
+    }
+
+    button[type="submit"] {
+        padding: 0.75rem 1.5rem;
+        background: #e87817;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.2s ease;
+
+        &:hover:not(:disabled) {
+            background: #c96510;
+        }
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    }
+}
+
+.add-channel-form {
+    input[type="text"] {
+        flex: 0.4;
+        min-width: 120px;
+    }
+
+    input[type="url"] {
+        flex: 0.6;
+    }
+}
+
+// --- Channels ---
+.channel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.channel-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid rgba(232, 120, 23, 0.1);
+
+    .channel-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+        flex: 1;
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #3a1f0d;
+        }
+
+        .channel-url {
+            font-size: 0.8rem;
+            color: rgba(58, 31, 13, 0.5);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-synced {
+            font-size: 0.75rem;
+            color: rgba(58, 31, 13, 0.4);
+        }
+
+        .channel-tracks {
+            font-size: 0.75rem;
+            color: rgba(58, 31, 13, 0.5);
+            font-weight: 600;
+        }
+
+        .channel-batch {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.25rem;
+
+            label {
+                font-size: 0.75rem;
+                color: rgba(58, 31, 13, 0.5);
+                font-weight: 600;
+            }
+
+            input {
+                width: 80px;
+                padding: 0.25rem 0.5rem;
+                border: 1px solid rgba(232, 120, 23, 0.2);
+                border-radius: 4px;
+                font-size: 0.75rem;
+                background: white;
+                color: #3a1f0d;
+                outline: none;
+
+                &::placeholder {
+                    color: rgba(58, 31, 13, 0.3);
+                    font-size: 0.7rem;
+                }
+
+                &:focus {
+                    border-color: #e87817;
+                }
+            }
+
+            .batch-save-btn {
+                padding: 0.2rem 0.5rem;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                cursor: pointer;
+                background: rgba(232, 120, 23, 0.1);
+                color: #c96510;
+                border: 1px solid rgba(232, 120, 23, 0.2);
+                transition: background 0.2s ease;
+
+                &:hover:not(:disabled) {
+                    background: rgba(232, 120, 23, 0.2);
+                }
+
+                &:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+            }
+        }
+    }
+
+    .channel-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+
+        .sync-btn,
+        .remove-btn {
+            padding: 0.4rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+
+            &:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+        }
+
+        .sync-btn {
+            background: #e87817;
+            color: white;
+            border: none;
+
+            &:hover:not(:disabled) {
+                background: #c96510;
+            }
+        }
+
+        .remove-btn {
+            background: rgba(229, 62, 62, 0.08);
+            color: #e53e3e;
+            border: 1px solid rgba(229, 62, 62, 0.2);
+
+            &:hover:not(:disabled) {
+                background: rgba(229, 62, 62, 0.15);
+            }
+        }
+    }
+}
+
+// --- Jobs ---
+.jobs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.job-card {
+    padding: 0.75rem 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid rgba(232, 120, 23, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    .job-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .job-status {
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-pending {
+        background: rgba(160, 174, 192, 0.15);
+        color: #718096;
+    }
+
+    .status-downloading {
+        background: rgba(66, 153, 225, 0.12);
+        color: #2b6cb0;
+    }
+
+    .status-importing {
+        background: rgba(232, 120, 23, 0.12);
+        color: #c96510;
+    }
+
+    .status-completed {
+        background: rgba(72, 187, 120, 0.12);
+        color: #2f855a;
+    }
+
+    .status-failed {
+        background: rgba(229, 62, 62, 0.1);
+        color: #e53e3e;
+    }
+
+    .status-paused {
+        background: rgba(160, 174, 192, 0.15);
+        color: #718096;
+    }
+
+    .job-type {
+        font-size: 0.75rem;
+        color: rgba(58, 31, 13, 0.5);
+        font-weight: 600;
+    }
+
+    .job-time {
+        font-size: 0.75rem;
+        color: rgba(58, 31, 13, 0.4);
+        margin-left: auto;
+    }
+
+    .job-url {
+        font-size: 0.8rem;
+        color: rgba(58, 31, 13, 0.6);
+        word-break: break-all;
+    }
+
+    .job-progress-bar-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .job-progress-bar {
+        height: 6px;
+        background: rgba(66, 153, 225, 0.12);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .job-progress-bar-fill {
+        height: 100%;
+        background: #4299e1;
+        border-radius: 3px;
+        transition: width 0.4s ease;
+
+        &.paused {
+            background: #a0aec0;
+        }
+    }
+
+    .job-progress-bar-text {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: rgba(58, 31, 13, 0.5);
+    }
+
+    .job-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .pause-btn,
+    .resume-btn {
+        padding: 0.3rem 0.75rem;
+        border-radius: 5px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    }
+
+    .pause-btn {
+        background: rgba(160, 174, 192, 0.1);
+        color: #718096;
+        border: 1px solid rgba(160, 174, 192, 0.3);
+
+        &:hover:not(:disabled) {
+            background: rgba(160, 174, 192, 0.2);
+        }
+    }
+
+    .resume-btn {
+        background: rgba(66, 153, 225, 0.1);
+        color: #2b6cb0;
+        border: 1px solid rgba(66, 153, 225, 0.3);
+
+        &:hover:not(:disabled) {
+            background: rgba(66, 153, 225, 0.2);
+        }
+    }
+
+    .job-progress {
+        font-size: 0.8rem;
+        color: #2f855a;
+        font-weight: 600;
+    }
+
+    .job-error {
+        font-size: 0.8rem;
+        color: #e53e3e;
+        background: rgba(229, 62, 62, 0.05);
+        padding: 0.4rem 0.6rem;
+        border-radius: 4px;
+    }
+}
+
+// --- Header nav auth links ---
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nav-auth {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-link {
+    color: #f5c28a;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.logout-btn {
+    color: rgba(245, 194, 138, 0.6);
+    font-family: inherit;
+}
+
+// --- Responsive: Tablet ---
+@media (max-width: 768px) {
+    .admin-page {
+        padding: 0 1rem;
+        margin: 1.5rem auto;
+    }
+
+    .add-channel-form {
+        flex-wrap: wrap;
+
+        input[type="text"],
+        input[type="url"] {
+            flex: 1 1 100%;
+        }
+    }
+
+    .channel-card {
+        flex-direction: column;
+        align-items: flex-start;
+
+        .channel-actions {
+            width: 100%;
+        }
+    }
+}
+
+// --- Responsive: Mobile ---
+@media (max-width: 480px) {
+    .admin-page {
+        padding: 0 0.75rem;
+        margin: 0.75rem auto;
+
+        > h1 {
+            font-size: 1.4rem;
+        }
+    }
+
+    .download-form {
+        flex-direction: column;
+
+        button[type="submit"] {
+            width: 100%;
+        }
+    }
+
+    .add-channel-form {
+        flex-direction: column;
+
+        button[type="submit"] {
+            width: 100%;
+        }
+    }
+
+    .channel-card .channel-actions {
+        .sync-btn,
+        .remove-btn {
+            flex: 1;
+            text-align: center;
+        }
+    }
+
+    .job-card .job-header {
+        flex-wrap: wrap;
+
+        .job-time {
+            width: 100%;
+            margin-left: 0;
+        }
+    }
+}
