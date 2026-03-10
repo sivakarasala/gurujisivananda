@@ -272,12 +272,7 @@ pub async fn run_download_job(
                 match line {
                     Some(line) => {
                         last_activity = std::time::Instant::now();
-                        // Log extraction/post-processing lines at info level for visibility
-                        if line.contains("[ExtractAudio]") || line.contains("[Merger]") || line.contains("Deleting original") {
-                            tracing::info!(job_id = %job_id, line = %line, "yt-dlp post-processing");
-                        } else {
-                            tracing::debug!(job_id = %job_id, line = %line, "yt-dlp output");
-                        }
+                        tracing::info!(job_id = %job_id, line = %line, "yt-dlp output");
                         match parse_ytdlp_line(&line) {
                             YtDlpProgress::ItemCount { current, total } => {
                                 current_item = current;
