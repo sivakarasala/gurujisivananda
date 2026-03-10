@@ -275,6 +275,16 @@ pub async fn pause_job(job_id: String) -> Result<(), ServerFnError> {
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
+    #[cfg(feature = "ssr")]
+    {
+        use crate::events::{job_event_sender, JobEvent};
+        let _ = job_event_sender().send(JobEvent::StatusChanged {
+            job_id: id.to_string(),
+            status: "paused".into(),
+            error_message: None,
+        });
+    }
+
     tracing::info!(job_id = %id, "Job paused");
     Ok(())
 }
@@ -342,6 +352,16 @@ pub async fn cancel_job(job_id: String) -> Result<(), ServerFnError> {
     crate::db::update_job_pid(&pool, id, None)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    #[cfg(feature = "ssr")]
+    {
+        use crate::events::{job_event_sender, JobEvent};
+        let _ = job_event_sender().send(JobEvent::StatusChanged {
+            job_id: id.to_string(),
+            status: "failed".into(),
+            error_message: Some("Cancelled by admin".into()),
+        });
+    }
 
     tracing::info!(job_id = %id, "Job cancelled by admin");
     Ok(())
@@ -457,44 +477,30 @@ pub fn AdminPage() -> impl IntoView {
         }
     });
 
-    // Poll for job updates every 5 seconds
+    // SSE: listen for real-time job updates instead of polling
     #[cfg(feature = "hydrate")]
     {
+        use wasm_bindgen::closure::Closure;
         use wasm_bindgen::JsCast;
-        wasm_bindgen_futures::spawn_local(async move {
-            let mut had_active = false;
-            loop {
-                // Sleep 5 seconds using JS setTimeout
-                let promise = js_sys::Promise::new(&mut |resolve, _| {
-                    let global = js_sys::global();
-                    let set_timeout = js_sys::Reflect::get(
-                        &global,
-                        &wasm_bindgen::JsValue::from_str("setTimeout"),
-                    )
-                    .unwrap()
-                    .unchecked_into::<js_sys::Function>();
-                    let _ = set_timeout.call2(
-                        &global,
-                        &resolve,
-                        &wasm_bindgen::JsValue::from_f64(5000.0),
-                    );
-                });
-                let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
 
-                let has_active = jobs.get_untracked().iter().any(|j| {
-                    j.status == "pending" || j.status == "downloading" || j.status == "importing"
-                });
-                if has_active {
-                    list_jobs_action.dispatch(ListJobs {});
-                    get_channels_action.dispatch(GetChannels {});
-                    had_active = true;
-                } else if had_active {
-                    // Jobs just finished — one final refresh to get updated track counts
-                    list_jobs_action.dispatch(ListJobs {});
-                    get_channels_action.dispatch(GetChannels {});
-                    had_active = false;
+        let es = web_sys::EventSource::new("/api/v1/jobs/sse").expect("EventSource");
+        let es_cleanup = es.clone();
+
+        let on_message =
+            Closure::<dyn Fn(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent| {
+                list_jobs_action.dispatch(ListJobs {});
+                // Refresh channels when a job completes (track counts change)
+                if let Some(data) = event.data().as_string() {
+                    if data.contains("\"status\":\"completed\"") {
+                        get_channels_action.dispatch(GetChannels {});
+                    }
                 }
-            }
+            });
+        es.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
+        on_message.forget();
+
+        leptos::prelude::on_cleanup(move || {
+            es_cleanup.close();
         });
     }
 

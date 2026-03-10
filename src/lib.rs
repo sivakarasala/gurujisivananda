@@ -8,6 +8,8 @@ pub mod components;
 pub mod configuration;
 pub mod db;
 #[cfg(feature = "ssr")]
+pub mod events;
+#[cfg(feature = "ssr")]
 pub mod import;
 #[cfg(feature = "ssr")]
 pub mod jobs;

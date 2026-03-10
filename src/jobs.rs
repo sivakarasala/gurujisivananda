@@ -1,8 +1,14 @@
+use crate::events::{job_event_sender, JobEvent};
 use regex::Regex;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use uuid::Uuid;
+
+/// Fire-and-forget: emit a job event to any SSE subscribers.
+fn emit(event: JobEvent) {
+    let _ = job_event_sender().send(event);
+}
 
 // ---- yt-dlp progress parsing ----
 
@@ -112,13 +118,13 @@ pub async fn run_download_job(
     let app_config = match crate::configuration::get_configuration() {
         Ok(c) => c,
         Err(e) => {
-            let _ = crate::db::update_job_status(
-                &pool,
-                job_id,
-                "failed",
-                Some(&format!("Config error: {}", e)),
-            )
-            .await;
+            let msg = format!("Config error: {}", e);
+            let _ = crate::db::update_job_status(&pool, job_id, "failed", Some(&msg)).await;
+            emit(JobEvent::StatusChanged {
+                job_id: job_id.to_string(),
+                status: "failed".into(),
+                error_message: Some(msg),
+            });
             return;
         }
     };
@@ -131,18 +137,23 @@ pub async fn run_download_job(
 
     // Update status to downloading
     let _ = crate::db::update_job_status(&pool, job_id, "downloading", None).await;
+    emit(JobEvent::StatusChanged {
+        job_id: job_id.to_string(),
+        status: "downloading".into(),
+        error_message: None,
+    });
 
     // Create temp directory for this job (skip if resuming and dir exists)
     let temp_dir = PathBuf::from(&app_config.yt_dlp.temp_dir).join(job_id.to_string());
     if !is_resume || !temp_dir.exists() {
         if let Err(e) = tokio::fs::create_dir_all(&temp_dir).await {
-            let _ = crate::db::update_job_status(
-                &pool,
-                job_id,
-                "failed",
-                Some(&format!("Failed to create temp dir: {}", e)),
-            )
-            .await;
+            let msg = format!("Failed to create temp dir: {}", e);
+            let _ = crate::db::update_job_status(&pool, job_id, "failed", Some(&msg)).await;
+            emit(JobEvent::StatusChanged {
+                job_id: job_id.to_string(),
+                status: "failed".into(),
+                error_message: Some(msg),
+            });
             return;
         }
     }
@@ -206,6 +217,11 @@ pub async fn run_download_job(
             let msg = format!("yt-dlp spawn error: {}. Is yt-dlp installed?", e);
             tracing::error!(job_id = %job_id, "{}", msg);
             let _ = crate::db::update_job_status(&pool, job_id, "failed", Some(&msg)).await;
+            emit(JobEvent::StatusChanged {
+                job_id: job_id.to_string(),
+                status: "failed".into(),
+                error_message: Some(msg),
+            });
             if !is_resume {
                 let _ = tokio::fs::remove_dir_all(&temp_dir).await;
             }
@@ -289,6 +305,7 @@ pub async fn run_download_job(
                             let _ = crate::db::update_job_download_progress(
                                 &pool, job_id, current_item, total_items, current_percent,
                             ).await;
+                            emit(JobEvent::DownloadProgress { job_id: job_id.to_string(), current_item, total_items, percent: current_percent });
                             last_db_update = std::time::Instant::now();
                         }
                     }
@@ -331,13 +348,14 @@ pub async fn run_download_job(
     }
 
     if timed_out {
+        let msg = "Download timed out — yt-dlp produced no output for 10 minutes. YouTube may be blocking this server.";
         let _ = crate::db::update_job_pid(&pool, job_id, None).await;
-        let _ = crate::db::update_job_status(
-            &pool,
-            job_id,
-            "failed",
-            Some("Download timed out — yt-dlp produced no output for 10 minutes. YouTube may be blocking this server."),
-        ).await;
+        let _ = crate::db::update_job_status(&pool, job_id, "failed", Some(msg)).await;
+        emit(JobEvent::StatusChanged {
+            job_id: job_id.to_string(),
+            status: "failed".into(),
+            error_message: Some(msg.into()),
+        });
         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
         return;
     }
@@ -349,6 +367,12 @@ pub async fn run_download_job(
     let _ =
         crate::db::update_job_download_progress(&pool, job_id, current_item, total_items, 100.0)
             .await;
+    emit(JobEvent::DownloadProgress {
+        job_id: job_id.to_string(),
+        current_item,
+        total_items,
+        percent: 100.0,
+    });
 
     let stderr_output = match tokio::time::timeout(std::time::Duration::from_secs(5), stderr_handle)
         .await
@@ -367,6 +391,11 @@ pub async fn run_download_job(
             let msg = format!("yt-dlp process error: {}", e);
             tracing::error!(job_id = %job_id, "{}", msg);
             let _ = crate::db::update_job_status(&pool, job_id, "failed", Some(&msg)).await;
+            emit(JobEvent::StatusChanged {
+                job_id: job_id.to_string(),
+                status: "failed".into(),
+                error_message: Some(msg),
+            });
             let _ = tokio::fs::remove_dir_all(&temp_dir).await;
             return;
         }
@@ -388,6 +417,11 @@ pub async fn run_download_job(
                 let user_msg = friendly_ytdlp_error(&stderr_output);
                 let _ =
                     crate::db::update_job_status(&pool, job_id, "failed", Some(&user_msg)).await;
+                emit(JobEvent::StatusChanged {
+                    job_id: job_id.to_string(),
+                    status: "failed".into(),
+                    error_message: Some(user_msg),
+                });
                 let _ = tokio::fs::remove_dir_all(&temp_dir).await;
                 return;
             }
@@ -400,6 +434,13 @@ pub async fn run_download_job(
     // Count info.json files
     let tracks_found = count_info_json_files(&temp_dir) as i32;
     let _ = crate::db::update_job_progress(&pool, job_id, tracks_found, 0, 0, 0).await;
+    emit(JobEvent::ImportProgress {
+        job_id: job_id.to_string(),
+        tracks_found,
+        tracks_imported: 0,
+        tracks_skipped: 0,
+        tracks_errored: 0,
+    });
 
     // Log temp dir contents for debugging
     tracing::info!(job_id = %job_id, tracks_found = tracks_found, temp_dir = %temp_dir.display(), "Starting import phase");
@@ -411,6 +452,11 @@ pub async fn run_download_job(
 
     // Import phase
     let _ = crate::db::update_job_status(&pool, job_id, "importing", None).await;
+    emit(JobEvent::StatusChanged {
+        job_id: job_id.to_string(),
+        status: "importing".into(),
+        error_message: None,
+    });
 
     let storage_path = PathBuf::from(&app_config.audio.storage_path);
 
@@ -438,6 +484,13 @@ pub async fn run_download_job(
         stats.errors as i32,
     )
     .await;
+    emit(JobEvent::ImportProgress {
+        job_id: job_id.to_string(),
+        tracks_found,
+        tracks_imported: stats.imported as i32,
+        tracks_skipped: stats.skipped as i32,
+        tracks_errored: stats.errors as i32,
+    });
 
     // Update channel last_synced_at if this was a channel sync
     if let Some(ch_id) = channel_id {
@@ -445,6 +498,11 @@ pub async fn run_download_job(
     }
 
     let _ = crate::db::update_job_status(&pool, job_id, "completed", None).await;
+    emit(JobEvent::StatusChanged {
+        job_id: job_id.to_string(),
+        status: "completed".into(),
+        error_message: None,
+    });
 
     // Clean up temp directory
     let _ = tokio::fs::remove_dir_all(&temp_dir).await;

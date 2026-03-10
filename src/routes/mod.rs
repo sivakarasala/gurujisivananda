@@ -1,7 +1,9 @@
 mod health_check;
+mod jobs_sse;
 mod tracks;
 
 pub use health_check::health_check;
+pub use jobs_sse::job_events_sse;
 pub use tracks::{download_track, list_tracks, stream_track, AppState};
 
 use utoipa::OpenApi;

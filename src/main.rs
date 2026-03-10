@@ -6,7 +6,7 @@ async fn main() {
     use gurujisivananda::app::*;
     use gurujisivananda::configuration;
     use gurujisivananda::routes::{
-        download_track, health_check, list_tracks, stream_track, ApiDoc, AppState,
+        download_track, health_check, job_events_sse, list_tracks, stream_track, ApiDoc, AppState,
     };
     use gurujisivananda::telemetry::{get_subscriber, init_subscriber};
     use leptos::prelude::*;
@@ -86,6 +86,7 @@ async fn main() {
 
     let api_routes = Router::new()
         .route("/health_check", get(health_check))
+        .route("/jobs/sse", get(job_events_sse))
         .merge(track_routes);
 
     let app = Router::new()
