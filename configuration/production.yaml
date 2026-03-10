@@ -1,0 +1,14 @@
+application:
+  host: "0.0.0.0"
+  port: 3000
+database:
+  require_ssl: true
+  channel_binding: false
+audio:
+  storage_path: "/app/data/audio"
+  s3:
+    endpoint: "https://sgp1.digitaloceanspaces.com"
+    bucket: "gurujisivananda-audio"
+    region: "sgp1"
+    access_key: "placeholder"
+    secret_key: "placeholder"

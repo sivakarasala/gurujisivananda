@@ -1,0 +1,8 @@
+application:
+  host: "0.0.0.0"
+database:
+  host: "localhost"
+  require_ssl: false
+  channel_binding: false
+audio:
+  storage_path: "/Users/sivakrishna/guruji/data/audio"

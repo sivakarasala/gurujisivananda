@@ -1,0 +1,32 @@
+# Build artifacts
+target/
+
+# Version control
+.git/
+.gitignore
+
+# Environment files (secrets)
+.env
+.env.*
+
+# End-to-end tests
+end2end/
+
+# Scripts
+scripts/
+
+# Documentation
+*.md
+LICENSE
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude/AI tooling
+.claude/
+
+# OS files
+.DS_Store

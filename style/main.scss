@@ -1,0 +1,9 @@
+// Base
+@use "reset";
+
+// Components (co-located with Rust files)
+@use "../src/components/header";
+@use "../src/components/toast";
+
+// Pages (co-located with Rust files)
+@use "../src/pages/guruji";

@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+debug/
+**/*.rs.bk
+*.pdb
+
+# Environment files (secrets)
+.env
+.env.*
+
+# Database (legacy SQLite)
+*.db
+*.db-shm
+*.db-wal
+
+# AI tooling
+.claude/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+.env

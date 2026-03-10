@@ -1,0 +1,18 @@
+{
+  "name": "Guruji Sivananda - Sacred Audio",
+  "short_name": "Guruji Audio",
+  "description": "Listen to sacred audio tracks from Guruji Sivananda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff7f0",
+  "theme_color": "#3a1f0d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/guruji.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
