@@ -496,12 +496,36 @@
         }
     }
 
-    .job-card .job-header {
+    .channel-card .channel-info .channel-batch {
         flex-wrap: wrap;
 
-        .job-time {
-            width: 100%;
-            margin-left: 0;
+        input {
+            flex: 1;
+            min-width: 60px;
+        }
+    }
+
+    .job-card {
+        .job-header {
+            flex-wrap: wrap;
+
+            .job-time {
+                width: 100%;
+                margin-left: 0;
+            }
+        }
+
+        .job-actions {
+            .pause-btn,
+            .resume-btn {
+                flex: 1;
+                padding: 0.5rem 0.75rem;
+                text-align: center;
+            }
+        }
+
+        .job-progress-bar-text {
+            font-size: 0.7rem;
         }
     }
 }
