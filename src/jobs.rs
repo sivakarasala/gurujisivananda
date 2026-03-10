@@ -272,7 +272,12 @@ pub async fn run_download_job(
                 match line {
                     Some(line) => {
                         last_activity = std::time::Instant::now();
-                        tracing::debug!(job_id = %job_id, line = %line, "yt-dlp output");
+                        // Log extraction/post-processing lines at info level for visibility
+                        if line.contains("[ExtractAudio]") || line.contains("[Merger]") || line.contains("Deleting original") {
+                            tracing::info!(job_id = %job_id, line = %line, "yt-dlp post-processing");
+                        } else {
+                            tracing::debug!(job_id = %job_id, line = %line, "yt-dlp output");
+                        }
                         match parse_ytdlp_line(&line) {
                             YtDlpProgress::ItemCount { current, total } => {
                                 current_item = current;
@@ -350,7 +355,16 @@ pub async fn run_download_job(
         crate::db::update_job_download_progress(&pool, job_id, current_item, total_items, 100.0)
             .await;
 
-    let stderr_output = stderr_handle.await.unwrap_or_default();
+    let stderr_output = match tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        stderr_handle,
+    ).await {
+        Ok(result) => result.unwrap_or_default(),
+        Err(_) => {
+            tracing::warn!(job_id = %job_id, "Timed out waiting for stderr collection, continuing");
+            String::new()
+        }
+    };
 
     tracing::info!(job_id = %job_id, exit = ?exit_status, stderr_len = stderr_output.len(), "yt-dlp process exited");
 
