@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Trigger signal to refresh storage indicator after save/remove.
 #[cfg(feature = "hydrate")]
-fn refresh_storage(
-    storage_used: RwSignal<Option<(f64, f64)>>,
-) {
+fn refresh_storage(storage_used: RwSignal<Option<(f64, f64)>>) {
     wasm_bindgen_futures::spawn_local(async move {
         let estimate = crate::pwa::get_storage_estimate().await;
         storage_used.set(estimate);

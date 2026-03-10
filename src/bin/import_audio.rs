@@ -9,12 +9,12 @@
 //!   ├── VIDEO_ID.info.json
 //!   └── ...
 
-use aws_sdk_s3::Client as S3Client;
 use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::Client as S3Client;
+use gurujisivananda::configuration;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use std::path::{Path, PathBuf};
-use gurujisivananda::configuration;
 
 #[derive(Deserialize)]
 struct YtDlpInfo {
@@ -101,7 +101,10 @@ async fn main() {
     let source_dir = parse_args();
 
     if !source_dir.exists() {
-        eprintln!("Error: source directory does not exist: {}", source_dir.display());
+        eprintln!(
+            "Error: source directory does not exist: {}",
+            source_dir.display()
+        );
         std::process::exit(1);
     }
 
@@ -186,8 +189,8 @@ async fn process_entry(
     let info: YtDlpInfo = serde_json::from_str(&content)?;
 
     // Find the corresponding audio file
-    let audio_file = find_audio_file(info_path)
-        .ok_or_else(|| format!("No audio file found for {}", info.id))?;
+    let audio_file =
+        find_audio_file(info_path).ok_or_else(|| format!("No audio file found for {}", info.id))?;
 
     let channel = info
         .channel
@@ -237,10 +240,7 @@ async fn process_entry(
         std::fs::metadata(&dest_full)?.len() as i64
     };
     let duration_seconds = info.duration.unwrap_or(0.0) as i32;
-    let upload_date = info
-        .upload_date
-        .as_deref()
-        .and_then(parse_upload_date);
+    let upload_date = info.upload_date.as_deref().and_then(parse_upload_date);
     let description = info.description.unwrap_or_default();
     let tags = info.tags.unwrap_or_default();
     let thumbnail_url = info.thumbnail.unwrap_or_default();

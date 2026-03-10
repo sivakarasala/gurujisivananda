@@ -7,8 +7,8 @@ pub fn register_service_worker() {
     let navigator = js_sys::Reflect::get(&global, &JsValue::from_str("navigator"))
         .unwrap_or(JsValue::UNDEFINED);
 
-    let sw_container =
-        js_sys::Reflect::get(&navigator, &JsValue::from_str("serviceWorker")).unwrap_or(JsValue::UNDEFINED);
+    let sw_container = js_sys::Reflect::get(&navigator, &JsValue::from_str("serviceWorker"))
+        .unwrap_or(JsValue::UNDEFINED);
     if sw_container.is_undefined() {
         return;
     }

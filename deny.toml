@@ -1,11 +1,9 @@
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "warn"
-notice = "warn"
+ignore = [
+    { id = "RUSTSEC-2024-0436", reason = "paste is a transitive dep from Leptos, no action available" },
+]
 
 [licenses]
-unlicensed = "deny"
 allow = [
     "MIT",
     "Apache-2.0",

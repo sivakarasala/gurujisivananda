@@ -1,9 +1,9 @@
+use aws_sdk_s3::Client as S3Client;
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use aws_sdk_s3::Client as S3Client;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
@@ -145,10 +145,7 @@ async fn stream_from_s3(
     track: &crate::db::TrackRow,
     range_header: Option<String>,
 ) -> Response {
-    let mut request = client
-        .get_object()
-        .bucket(bucket)
-        .key(&track.file_path);
+    let mut request = client.get_object().bucket(bucket).key(&track.file_path);
 
     if let Some(range) = &range_header {
         request = request.range(range.clone());
@@ -264,10 +261,7 @@ async fn stream_from_local(
         (status = 500, description = "Internal server error")
     )
 )]
-pub async fn download_track(
-    State(state): State<AppState>,
-    Path(id): Path<uuid::Uuid>,
-) -> Response {
+pub async fn download_track(State(state): State<AppState>, Path(id): Path<uuid::Uuid>) -> Response {
     let track = match crate::db::get_track_by_id(&state.pool, id).await {
         Ok(Some(t)) => t,
         Ok(None) => return (StatusCode::NOT_FOUND, "Track not found").into_response(),

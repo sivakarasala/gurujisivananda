@@ -3,15 +3,15 @@
 async fn main() {
     use axum::routing::get;
     use axum::Router;
-    use leptos::prelude::*;
-    use leptos_axum::{generate_route_list, LeptosRoutes};
-    use sqlx::postgres::PgPoolOptions;
     use gurujisivananda::app::*;
     use gurujisivananda::configuration;
     use gurujisivananda::routes::{
-        download_track, health_check, list_tracks, stream_track, AppState, ApiDoc,
+        download_track, health_check, list_tracks, stream_track, ApiDoc, AppState,
     };
     use gurujisivananda::telemetry::{get_subscriber, init_subscriber};
+    use leptos::prelude::*;
+    use leptos_axum::{generate_route_list, LeptosRoutes};
+    use sqlx::postgres::PgPoolOptions;
     use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
     use tower_http::trace::TraceLayer;
     use utoipa::OpenApi;

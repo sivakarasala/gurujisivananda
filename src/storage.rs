@@ -1,5 +1,5 @@
-use aws_sdk_s3::Client as S3Client;
 use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, RequestChecksumCalculation};
+use aws_sdk_s3::Client as S3Client;
 
 use crate::configuration::S3Settings;
 
@@ -22,8 +22,8 @@ pub async fn build_s3_client(settings: &S3Settings) -> S3Client {
         .build();
 
     #[allow(deprecated)]
-    let http_client = aws_smithy_http_client::hyper_014::HyperClientBuilder::new()
-        .build(https_connector);
+    let http_client =
+        aws_smithy_http_client::hyper_014::HyperClientBuilder::new().build(https_connector);
 
     let config = aws_sdk_s3::Config::builder()
         .behavior_version(BehaviorVersion::latest())
