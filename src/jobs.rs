@@ -170,6 +170,7 @@ pub async fn run_download_job(
         if std::path::Path::new(cookies).exists() {
             args.push("--cookies".to_string());
             args.push(cookies.clone());
+            tracing::info!(job_id = %job_id, path = %cookies, "Using cookies file for yt-dlp");
         } else {
             tracing::warn!(job_id = %job_id, path = %cookies, "Cookies file not found, proceeding without");
         }
