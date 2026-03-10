@@ -23,6 +23,18 @@ async fn main() {
     let subscriber = get_subscriber("gurujisivananda".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
+    // Write YouTube cookies file from env var if set (for platforms like DigitalOcean
+    // that don't support file mounts — store cookie content in an env var instead)
+    if let Ok(cookies_content) = std::env::var("YOUTUBE_COOKIES") {
+        let cookies_path = "/app/data/cookies.txt";
+        let _ = std::fs::create_dir_all("/app/data");
+        if std::fs::write(cookies_path, &cookies_content).is_ok() {
+            tracing::info!("Wrote YouTube cookies file from YOUTUBE_COOKIES env var");
+            // Set the config env var so the config layer picks it up
+            std::env::set_var("APP_YT_DLP__COOKIES_FILE", cookies_path);
+        }
+    }
+
     let app_config = configuration::get_configuration().expect("Failed to read configuration");
 
     let pool = PgPoolOptions::new().connect_lazy_with(app_config.database.connection_options());

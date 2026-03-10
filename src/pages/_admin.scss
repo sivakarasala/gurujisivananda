@@ -351,7 +351,8 @@
     }
 
     .pause-btn,
-    .resume-btn {
+    .resume-btn,
+    .cancel-btn {
         padding: 0.3rem 0.75rem;
         border-radius: 5px;
         font-size: 0.78rem;
@@ -382,6 +383,16 @@
 
         &:hover:not(:disabled) {
             background: rgba(66, 153, 225, 0.2);
+        }
+    }
+
+    .cancel-btn {
+        background: rgba(229, 62, 62, 0.1);
+        color: #e53e3e;
+        border: 1px solid rgba(229, 62, 62, 0.3);
+
+        &:hover:not(:disabled) {
+            background: rgba(229, 62, 62, 0.2);
         }
     }
 

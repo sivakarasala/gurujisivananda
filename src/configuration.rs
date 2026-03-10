@@ -20,6 +20,7 @@ pub struct YtDlpSettings {
     pub audio_format: String,
     pub sync_interval_hours: u64,
     pub max_downloads_per_batch: u32,
+    pub cookies_file: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

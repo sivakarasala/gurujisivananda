@@ -165,6 +165,16 @@ pub async fn run_download_job(
         output_template,
     ];
 
+    // Pass cookies file if configured (helps bypass YouTube anti-bot)
+    if let Some(ref cookies) = app_config.yt_dlp.cookies_file {
+        if std::path::Path::new(cookies).exists() {
+            args.push("--cookies".to_string());
+            args.push(cookies.clone());
+        } else {
+            tracing::warn!(job_id = %job_id, path = %cookies, "Cookies file not found, proceeding without");
+        }
+    }
+
     // Use download archive for channel syncs to skip already-downloaded videos
     if let Some(ch_id) = channel_id {
         let archive_path = temp_dir.join("archive.txt").to_string_lossy().to_string();
@@ -242,6 +252,10 @@ pub async fn run_download_job(
     let mut total_items: i32 = 0;
     let mut current_percent: f32 = 0.0;
     let mut last_db_update = std::time::Instant::now();
+    let mut last_activity = std::time::Instant::now();
+
+    // Timeout: if yt-dlp produces no output for 10 minutes, assume it's stuck
+    const STALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
 
     // Race line reading against child exit. yt-dlp's subprocess (ffmpeg) may
     // inherit pipe fds, keeping them open after yt-dlp exits. We use select!
@@ -249,12 +263,15 @@ pub async fn run_download_job(
     let mut child_done = false;
     let mut exit_status: Result<std::process::ExitStatus, std::io::Error> =
         Err(std::io::Error::other("not started"));
+    let mut timed_out = false;
 
     loop {
         tokio::select! {
             line = line_rx.recv(), if !child_done => {
                 match line {
                     Some(line) => {
+                        last_activity = std::time::Instant::now();
+                        tracing::debug!(job_id = %job_id, line = %line, "yt-dlp output");
                         match parse_ytdlp_line(&line) {
                             YtDlpProgress::ItemCount { current, total } => {
                                 current_item = current;
@@ -303,7 +320,25 @@ pub async fn run_download_job(
                 }
                 break;
             }
+            _ = tokio::time::sleep_until(tokio::time::Instant::from_std(last_activity + STALL_TIMEOUT)), if !child_done => {
+                tracing::error!(job_id = %job_id, "yt-dlp stalled (no output for 10 minutes), killing process");
+                let _ = child.kill().await;
+                timed_out = true;
+                break;
+            }
         }
+    }
+
+    if timed_out {
+        let _ = crate::db::update_job_pid(&pool, job_id, None).await;
+        let _ = crate::db::update_job_status(
+            &pool,
+            job_id,
+            "failed",
+            Some("Download timed out — yt-dlp produced no output for 10 minutes. YouTube may be blocking this server."),
+        ).await;
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+        return;
     }
 
     // Clear PID from DB

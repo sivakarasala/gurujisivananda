@@ -313,6 +313,41 @@ pub async fn resume_job(job_id: String) -> Result<(), ServerFnError> {
 }
 
 #[server]
+pub async fn cancel_job(job_id: String) -> Result<(), ServerFnError> {
+    crate::auth::require_admin().await?;
+    let pool = crate::db::db().await?;
+
+    let id = uuid::Uuid::parse_str(&job_id).map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let (status, pid) = crate::db::get_job_status(&pool, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?
+        .ok_or_else(|| ServerFnError::new("Job not found"))?;
+
+    if status != "downloading" && status != "pending" && status != "importing" {
+        return Err(ServerFnError::new("Job is not active"));
+    }
+
+    // Kill the yt-dlp process if running
+    if let Some(pid) = pid {
+        unsafe {
+            libc::kill(pid, libc::SIGKILL);
+        }
+    }
+
+    crate::db::update_job_status(&pool, id, "failed", Some("Cancelled by admin"))
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    crate::db::update_job_pid(&pool, id, None)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    tracing::info!(job_id = %id, "Job cancelled by admin");
+    Ok(())
+}
+
+#[server]
 pub async fn update_batch_size(
     channel_id: String,
     batch_size: String,
@@ -725,16 +760,20 @@ pub fn AdminPage() -> impl IntoView {
                                                     let width_style = format!("width: {:.1}%", overall_pct);
                                                     let bar_class = if is_paused_bar { "job-progress-bar-fill paused" } else { "job-progress-bar-fill" };
 
-                                                    // Pause/resume state
+                                                    // Pause/resume/cancel state
                                                     let is_downloading = job.status == "downloading";
                                                     let is_paused = job.status == "paused";
+                                                    let is_active = job.status == "downloading" || job.status == "pending" || job.status == "importing";
                                                     let job_id_for_pause = job.id.clone();
                                                     let job_id_for_resume = job.id.clone();
+                                                    let job_id_for_cancel = job.id.clone();
 
                                                     let pause_action = ServerAction::<PauseJob>::new();
                                                     let resume_action = ServerAction::<ResumeJob>::new();
+                                                    let cancel_action = ServerAction::<CancelJob>::new();
                                                     let pause_pending = pause_action.pending();
                                                     let resume_pending = resume_action.pending();
+                                                    let cancel_pending = cancel_action.pending();
 
                                                     let pause_value = pause_action.value();
                                                     Effect::new(move || {
@@ -751,6 +790,18 @@ pub fn AdminPage() -> impl IntoView {
                                                             match result {
                                                                 Ok(()) => { list_jobs_action.dispatch(ListJobs {}); }
                                                                 Err(e) => { toast.error(format!("Resume failed: {}", e)); }
+                                                            }
+                                                        }
+                                                    });
+                                                    let cancel_value = cancel_action.value();
+                                                    Effect::new(move || {
+                                                        if let Some(result) = cancel_value.get() {
+                                                            match result {
+                                                                Ok(()) => {
+                                                                    toast.success("Job cancelled".to_string());
+                                                                    list_jobs_action.dispatch(ListJobs {});
+                                                                }
+                                                                Err(e) => { toast.error(format!("Cancel failed: {}", e)); }
                                                             }
                                                         }
                                                     });
@@ -782,7 +833,7 @@ pub fn AdminPage() -> impl IntoView {
                                                             {job.error_message.clone().map(|msg| view! {
                                                                 <div class="job-error">{msg}</div>
                                                             })}
-                                                            {(is_downloading || is_paused).then(move || view! {
+                                                            {(is_downloading || is_paused || is_active).then(move || view! {
                                                                 <div class="job-actions">
                                                                     {is_downloading.then(|| {
                                                                         let jid = job_id_for_pause.clone();
@@ -809,6 +860,20 @@ pub fn AdminPage() -> impl IntoView {
                                                                                 }
                                                                             >
                                                                                 {move || if resume_pending.get() { "Resuming..." } else { "Resume" }}
+                                                                            </button>
+                                                                        }
+                                                                    })}
+                                                                    {is_active.then(|| {
+                                                                        let jid = job_id_for_cancel.clone();
+                                                                        view! {
+                                                                            <button
+                                                                                class="cancel-btn"
+                                                                                disabled=move || cancel_pending.get()
+                                                                                on:click=move |_| {
+                                                                                    cancel_action.dispatch(CancelJob { job_id: jid.clone() });
+                                                                                }
+                                                                            >
+                                                                                {move || if cancel_pending.get() { "Cancelling..." } else { "Cancel" }}
                                                                             </button>
                                                                         }
                                                                     })}
