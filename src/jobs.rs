@@ -350,10 +350,9 @@ pub async fn run_download_job(
         crate::db::update_job_download_progress(&pool, job_id, current_item, total_items, 100.0)
             .await;
 
-    let stderr_output = match tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        stderr_handle,
-    ).await {
+    let stderr_output = match tokio::time::timeout(std::time::Duration::from_secs(5), stderr_handle)
+        .await
+    {
         Ok(result) => result.unwrap_or_default(),
         Err(_) => {
             tracing::warn!(job_id = %job_id, "Timed out waiting for stderr collection, continuing");
